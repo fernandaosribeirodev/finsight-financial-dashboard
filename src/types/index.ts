@@ -1,4 +1,5 @@
 
+// TRANSAÇÕES 
 export interface Transacao {
   id: string;
   userId: string;
@@ -13,13 +14,14 @@ export interface Transacao {
   metodoPagamento?: 'Pix/Dinheiro' | 'CartaoCredito';
   cartaoId?: string | null;
   parcelas?: number;
-  valorParcela?: number;      // NOVO: Facilita o cálculo do motor
-  mesInicialFatura?: string;  // NOVO: "YYYY-MM" para saber quando começa a cobrar
+  valorParcela?: number;      
+  mesInicialFatura?: string;  
   
   createdAt: string;
 }
 
 export type NovaTransacao = Omit<Transacao, 'id' | 'createdAt' | 'userId'>;
+// METAS FINANCEIRAS
 
 export interface MetaFinanceira {
   id: string;
@@ -34,6 +36,7 @@ export interface MetaFinanceira {
 
 export type NovaMeta = Omit<MetaFinanceira, 'id' | 'createdAt' | 'userId'>;
 
+// CARTÕES DE CRÉDITO
 
 export interface CartaoCredito {
   id: string;
@@ -48,3 +51,27 @@ export interface CartaoCredito {
 }
 
 export type NovoCartao = Omit<CartaoCredito, 'id' | 'createdAt' | 'userId'>;
+
+// INVESTIMENTOS (CARTEIRA DE ATIVOS) - NOVO!
+
+export interface AtivoInvestimento {
+  id: string;
+  userId: string;
+  ticker: string;             // Ex: PETR4, MXRF11, IVVB11
+  nomeEmpresa?: string;       // Ex: Petrobras PN
+  quantidade: number;         // Quantidade total acumulada
+  precoMedio: number;         // Preço médio pago por cota
+  tipoAtivo: 'Ações' | 'FIIs' | 'ETFs' | 'Cripto' | 'Renda Fixa';
+  dataUltimaCompra: string;   // Formato "YYYY-MM-DD"
+  createdAt: string;
+}
+
+export type NovoAtivo = Omit<AtivoInvestimento, 'id' | 'createdAt' | 'userId'>;
+
+// Interface para as cotações que chegam da API externa em tempo real
+export interface CotacaoAtivo {
+  ticker: string;
+  nomeEmpresa: string;
+  precoAtual: number;
+  variacaoDia: number; // Percentual de subida ou descida (Ex: 1.5 ou -0.8)
+}

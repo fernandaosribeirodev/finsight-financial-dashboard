@@ -4,14 +4,19 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCartoes } from '@/hooks/useCartoes';
 import { useTransactions } from '@/hooks/useTransactions'; 
+import { useSettings } from '@/contexts/SettingsContext'; // 1. Hook Global de Traduções
 import { CartaoModal } from '@/components/cartoes/CartaoModal';
-import { MonthCarousel } from '@/components/layout/MonthCarousel'; // <-- IMPORTAMOS O CARROSSEL
+import { MonthCarousel } from '@/components/layout/MonthCarousel';
 import { Plus, Trash2, CreditCard, AlertCircle, Calendar, FileText } from 'lucide-react';
 
 export default function CartoesPage() {
   const { cartoes, loadingCartoes, adicionarCartao, deletarCartao } = useCartoes();
   const { resumoFinanceiro } = useTransactions(); 
+  const { traduzir, isMounted } = useSettings(); // 2. Funções do Dicionário
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Evita flash de conteúdo antes de carregar o idioma salvo
+  if (!isMounted) return null;
 
   const formatarMoeda = (valor: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
@@ -19,11 +24,12 @@ export default function CartoesPage() {
 
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto">
-      {/* CABEÇALHO COM O CARROSSEL */}
+      {/* CABEÇALHO COM O CARROSSEL E TRADUÇÃO */}
       <section className="flex flex-col gap-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-display font-bold tracking-tight">Cartões de Crédito</h2>
+            {/* 3. Traduzindo os Textos Principais */}
+            <h2 className="text-3xl font-display font-bold tracking-tight">{traduzir('cartoes')}</h2>
             <p className="text-foreground/50">Gerencie seus limites e preveja faturas futuras.</p>
           </div>
           <button 
@@ -34,7 +40,6 @@ export default function CartoesPage() {
           </button>
         </div>
         
-        {/* CARROSSEL TEMPORAL AQUI TAMBÉM */}
         <MonthCarousel />
       </section>
 
@@ -53,9 +58,9 @@ export default function CartoesPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           <AnimatePresence>
             {cartoes.map((cartao) => {
-              const limiteUsado = resumoFinanceiro.gastosPorCartao[cartao.id] || 0; 
-              // <-- NOVO: Puxamos a fatura apenas do mês selecionado
-              const faturaDoMes = resumoFinanceiro.faturasPorCartao[cartao.id] || 0; 
+              // PROTEÇÃO ANTI-CRASH E ACESSO SEGURO
+              const limiteUsado = resumoFinanceiro?.gastosPorCartao?.[cartao.id] || 0; 
+              const faturaDoMes = resumoFinanceiro?.faturasPorCartao?.[cartao.id] || 0; 
               
               const limiteDisponivel = cartao.limiteTotal - limiteUsado;
               const percentualUso = cartao.limiteTotal > 0 ? (limiteUsado / cartao.limiteTotal) * 100 : 0;
@@ -98,7 +103,6 @@ export default function CartoesPage() {
                   {/* Dashboard Interno do Cartão */}
                   <div className="p-5 pt-4 space-y-4">
                     
-                    {/* NOVO: DESTAQUE PARA A FATURA DO MÊS */}
                     <div className="flex items-center justify-between p-3 rounded-xl bg-foreground/5 border border-border">
                       <div className="flex items-center gap-2">
                         <FileText size={16} className="text-foreground/50" />

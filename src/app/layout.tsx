@@ -1,34 +1,37 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Outfit } from 'next/font/google';
+import { AppProviders } from '@/providers/AppProviders';
 import './globals.css';
-import { AuthProvider } from '../contexts/AuthContext'; // <-- IMPORTAMOS O PROVIDER AQUI
 
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
+// Configuração das Fontes
+const fontSans = Inter({ 
+  subsets: ['latin'], 
   variable: '--font-sans',
 });
 
+const fontDisplay = Outfit({ 
+  subsets: ['latin'], 
+  variable: '--font-display',
+});
+
 export const metadata: Metadata = {
-  title: 'FinSight | Inteligência Financeira',
-  description: 'Controle seu patrimônio com a experiência mais premium do mercado.',
+  title: 'FinSight - Controle Financeiro',
+  description: 'A sua plataforma inteligente de gestão de patrimônio.',
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="pt-BR" className={`${inter.variable}`}>
+    <html lang="pt-BR" suppressHydrationWarning>
       <body 
-        className="font-sans relative min-h-screen bg-background overflow-x-hidden text-foreground selection:bg-primary/30 selection:text-foreground"
-        style={{ fontFeatureSettings: '"cv11", "ss01"' }}
+        className={`${fontSans.variable} ${fontDisplay.variable} font-sans antialiased min-h-screen bg-background text-foreground transition-colors duration-300`}
       >
-        {/* Envolvendo a aplicação inteira com a nossa lógica de sessão real */}
-        <AuthProvider>
+        <AppProviders>
           {children}
-        </AuthProvider>
+        </AppProviders>
       </body>
     </html>
   );

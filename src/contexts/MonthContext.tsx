@@ -7,6 +7,7 @@ interface MonthContextData {
   setActiveMonth: (month: string) => void;
 }
 
+// Cria o contexto vazio inicialmente
 const MonthContext = createContext<MonthContextData>({} as MonthContextData);
 
 export function MonthProvider({ children }: { children: React.ReactNode }) {
@@ -25,6 +26,11 @@ export function MonthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Exporta o Hook para ser usado nos outros arquivos (como o Carrossel e o Dashboard)
 export function useMonth() {
-  return useContext(MonthContext);
+  const context = useContext(MonthContext);
+  if (!context) {
+    throw new Error('useMonth deve ser usado dentro de um MonthProvider');
+  }
+  return context;
 }

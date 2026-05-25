@@ -1,138 +1,105 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Transacao, NovaTransacao } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
-import { useMonth } from '@/contexts/MonthContext'; 
+import { useState, useEffect, useMemo } from 'react';
+import { useMonth } from '@/contexts/MonthContext';
+
+export interface Transacao {
+  id: string;
+  titulo: string;
+  valor: number;
+  tipo: 'Entrada' | 'Saida';
+  categoria: string;
+  tag: string;
+  metodoPagamento: string;
+  data: string;
+  cartaoId?: string; // <-- O TypeScript precisava disto para ligar ao cartão!
+}
 
 export function useTransactions() {
-  const { user } = useAuth();
-  const { activeMonth } = useMonth(); 
-  
+  const { activeMonth } = useMonth();
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [resumoFinanceiro, setResumoFinanceiro] = useState({
-    entradas: 0,
-    essenciais: 0,
-    naoEssenciais: 0,
-    sobra: 0,
-    reservaIdeal: 0,
-    gastosPorCartao: {} as Record<string, number>,
-    faturasPorCartao: {} as Record<string, number> 
-  });
-
+  // 1. HIDRATAÇÃO SEGURA
   useEffect(() => {
-    if (!user?.uid) {
-      setTransacoes([]);
-      setLoading(false);
-      return;
+    const dadosSalvos = localStorage.getItem('@FinSight:transacoes');
+    if (dadosSalvos) {
+      setTransacoes(JSON.parse(dadosSalvos));
     }
+    setLoading(false);
+  }, []);
 
-    setLoading(true);
+  // 2. PERSISTÊNCIA NO LOCALSTORAGE
+  useEffect(() => {
+    if (!loading) {
+      localStorage.setItem('@FinSight:transacoes', JSON.stringify(transacoes));
+    }
+  }, [transacoes, loading]);
 
-    const q = query(collection(db, 'users', user.uid, 'transacoes'), orderBy('data', 'desc'));
+  // 3. FILTRO DO CARROSSEL DE MESES
+  const transacoesDoMes = useMemo(() => {
+    if (!activeMonth) return [];
+    return transacoes.filter((t) => t.data.startsWith(activeMonth));
+  }, [transacoes, activeMonth]);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const dadosBrutos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Transacao[];
+  // 4. MOTOR DE CÁLCULO (Agora com os Cartões de Crédito integrados!)
+  const resumoFinanceiro = useMemo(() => {
+    let entradas = 0;
+    let essenciais = 0;
+    let naoEssenciais = 0;
+    const gastosPorCartao: Record<string, number> = {};
+    const faturasPorCartao: Record<string, number> = {};
 
-      let entradas = 0;
-      let essenciais = 0;
-      let naoEssenciais = 0;
-      const gastosPorCartao: Record<string, number> = {};
-      const faturasPorCartao: Record<string, number> = {};
-      const transacoesDesteMes: Transacao[] = [];
+    // A) O Limite dos Cartões considera todas as compras (histórico completo)
+    transacoes.forEach((t) => {
+      if (t.tipo === 'Saida' && t.metodoPagamento === 'CartaoCredito' && t.cartaoId) {
+        gastosPorCartao[t.cartaoId] = (gastosPorCartao[t.cartaoId] || 0) + t.valor;
+      }
+    });
 
-      dadosBrutos.forEach((t) => {
-        const valorTotal = Number(t.valor) || 0;
-        const parcelas = Number(t.parcelas) || 1;
-        const valorParcela = valorTotal / parcelas;
-
-        const [anoStr, mesStr, diaStr] = t.data.split('-');
-        const dataOriginal = new Date(Number(anoStr), Number(mesStr) - 1, Number(diaStr));
-
-        // Analisando parcela por parcela no tempo
-        for (let i = 0; i < parcelas; i++) {
-          const dataProjetada = new Date(dataOriginal.getFullYear(), dataOriginal.getMonth() + i, 1);
-          const mesProjetado = `${dataProjetada.getFullYear()}-${String(dataProjetada.getMonth() + 1).padStart(2, '0')}`;
-
-          // LÓGICA CORRIGIDA: LIBERAÇÃO DE LIMITE INTELIGENTE
-          // Se o mês da parcela for maior ou igual ao mês que estamos a ver, ela ainda é uma dívida!
-          // Isso faz o limite ser libertado automaticamente nos meses futuros.
-          if (t.metodoPagamento === 'CartaoCredito' && t.cartaoId) {
-            // Comparamos strings de data (ex: "2026-08" >= "2026-05")
-            if (mesProjetado >= activeMonth) {
-              if (!gastosPorCartao[t.cartaoId]) gastosPorCartao[t.cartaoId] = 0;
-              gastosPorCartao[t.cartaoId] += valorParcela;
-            }
-          }
-
-          // Se a parcela cair EXATAMENTE no mês que o utilizador selecionou no Carrossel
-          if (mesProjetado === activeMonth) {
-            
-            // 1. Soma na Fatura Deste Mês
-            if (t.metodoPagamento === 'CartaoCredito' && t.cartaoId) {
-              if (!faturasPorCartao[t.cartaoId]) faturasPorCartao[t.cartaoId] = 0;
-              faturasPorCartao[t.cartaoId] += valorParcela;
-            }
-
-            // 2. Cria a Transação Visual para a Lista
-            transacoesDesteMes.push({
-              ...t,
-              valor: valorParcela,
-              titulo: parcelas > 1 ? `${t.titulo} (${i + 1}/${parcelas})` : t.titulo,
-              id: parcelas > 1 ? `${t.id}-p${i+1}` : t.id
-            });
-
-            // 3. Impacta a "Sobra" Deste Mês
-            if (t.tipo === 'Entrada') {
-              entradas += valorParcela;
-            } else {
-              if (t.categoria === 'Essencial') essenciais += valorParcela;
-              else if (t.categoria === 'Não Essencial') naoEssenciais += valorParcela;
-            }
-          }
+    // B) Entradas, despesas e faturas apenas do Mês Ativo no ecrã
+    transacoesDoMes.forEach((t) => {
+      if (t.tipo === 'Entrada') {
+        entradas += t.valor;
+      } else if (t.tipo === 'Saida') {
+        if (t.categoria === 'Essencial') {
+          essenciais += t.valor;
+        } else {
+          naoEssenciais += t.valor;
         }
-      });
-
-      const sobra = entradas - (essenciais + naoEssenciais);
-      const reservaIdeal = essenciais * 6;
-
-      setResumoFinanceiro({ 
-        entradas, 
-        essenciais, 
-        naoEssenciais, 
-        sobra, 
-        reservaIdeal, 
-        gastosPorCartao,
-        faturasPorCartao 
-      });
-      
-      transacoesDesteMes.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-      
-      setTransacoes(transacoesDesteMes);
-      setLoading(false);
+        
+        // Fatura apenas do mês selecionado
+        if (t.metodoPagamento === 'CartaoCredito' && t.cartaoId) {
+          faturasPorCartao[t.cartaoId] = (faturasPorCartao[t.cartaoId] || 0) + t.valor;
+        }
+      }
     });
 
-    return () => unsubscribe();
-  }, [user?.uid, activeMonth]);
+    const sobra = entradas - (essenciais + naoEssenciais);
+    const reservaIdeal = essenciais * 6;
 
-  const adicionarTransacao = async (nova: NovaTransacao) => {
-    if (!user?.uid) return;
-    await addDoc(collection(db, 'users', user.uid, 'transacoes'), {
+    // Agora o React devolve tudo o que a página de Cartões precisava
+    return { entradas, essenciais, naoEssenciais, sobra, reservaIdeal, gastosPorCartao, faturasPorCartao };
+  }, [transacoes, transacoesDoMes]);
+
+  // 5. AÇÕES
+  const adicionarTransacao = async (nova: Omit<Transacao, 'id'>) => {
+    const novaTransacao: Transacao = {
       ...nova,
-      userId: user.uid,
-      createdAt: new Date().toISOString()
-    });
+      id: crypto.randomUUID(),
+    };
+    setTransacoes((prev) => [novaTransacao, ...prev]);
   };
 
-  const deletarTransacao = async (id: string) => {
-    if (!user?.uid) return;
-    const idReal = id.split('-p')[0];
-    await deleteDoc(doc(db, 'users', user.uid, 'transacoes', idReal));
+  const deletarTransacao = (id: string) => {
+    setTransacoes((prev) => prev.filter((t) => t.id !== id));
   };
 
-  return { transacoes, loading, resumoFinanceiro, adicionarTransacao, deletarTransacao };
+  return {
+    transacoes: transacoesDoMes,
+    loading,
+    resumoFinanceiro,
+    adicionarTransacao,
+    deletarTransacao
+  };
 }

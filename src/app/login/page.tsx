@@ -149,11 +149,12 @@ export default function LoginPage() {
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-semibold text-foreground/80">Senha</label>
-                  <Link href="#" className="text-xs text-foreground/50 hover:text-foreground hover:underline">Esqueceu a senha?</Link>
+                  {/* O LINK ATUALIZADO ESTÁ AQUI ABAIXO */}
+                  <Link href="/esqueci-senha" className="text-xs text-foreground/50 hover:text-foreground hover:underline focus-ring rounded-sm">Esqueceu a senha?</Link>
                 </div>
                 <div className="relative">
                   <input type={showPassword ? 'text' : 'password'} placeholder="Sua senha" className={`w-full bg-background border ${errors.password ? 'border-destructive' : 'border-border'} rounded-xl pl-4 pr-10 py-3 text-sm focus-ring`} {...register('password')} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground p-1">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground p-1 rounded-md focus-ring">
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>

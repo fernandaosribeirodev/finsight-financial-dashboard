@@ -1,134 +1,80 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { AtivoInvestimento, NovoAtivo } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
-import { buscarCotacoesMercado } from '@/services/marketDataService';
 
-// Tipagem do ativo já com os cálculos de lucro/prejuízo fundidos
-export interface AtivoEnriquecido extends AtivoInvestimento {
-  precoAtual: number;
-  saldoAtual: number;           // quantidade * precoAtual
-  valorInvestido: number;       // quantidade * precoMedio
-  lucroPrejuizoValor: number;   // saldoAtual - valorInvestido
-  lucroPrejuizoPercent: number; // (lucroPrejuizoValor / valorInvestido) * 100
-  variacaoDia: number;
-  nomeEmpresa: string;
+export interface Ativo {
+  id: string;
+  ticker: string;
+  quantidade: number;
+  precoMedio: number;
+  tipoAtivo: 'Ações' | 'FIIs' | 'Renda Fixa' | 'Cripto';
+  dataUltimaCompra: string;
 }
 
 export function usePortfolio() {
-  const { user } = useAuth();
-  
-  // 1. ESTADO LOCAL DO FIREBASE (O que o usuário comprou)
-  const [ativosFirebase, setAtivosFirebase] = useState<AtivoInvestimento[]>([]);
-  const [loadingFirebase, setLoadingFirebase] = useState(true);
+  const [ativos, setAtivos] = useState<Ativo[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Busca os dados do Firebase em tempo real
+  // 1. CARREGA OS DADOS SALVOS
   useEffect(() => {
-    if (!user?.uid) {
-      setAtivosFirebase([]);
-      setLoadingFirebase(false);
-      return;
+    const dadosSalvos = localStorage.getItem('@FinSight:portfolio');
+    if (dadosSalvos) {
+      setAtivos(JSON.parse(dadosSalvos));
     }
+    setLoading(false);
+  }, []);
 
-    setLoadingFirebase(true);
-    const q = query(collection(db, 'users', user.uid, 'investimentos'), orderBy('ticker', 'asc'));
+  // 2. SALVA NO NAVEGADOR (PERSISTÊNCIA)
+  useEffect(() => {
+    if (!loading) {
+      localStorage.setItem('@FinSight:portfolio', JSON.stringify(ativos));
+    }
+  }, [ativos, loading]);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const dados = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AtivoInvestimento[];
-      setAtivosFirebase(dados);
-      setLoadingFirebase(false);
-    });
-
-    return () => unsubscribe();
-  }, [user?.uid]);
-
-  // 2. EXTRAÇÃO DE TICKERS ÚNICOS
-  // Precisamos saber quais ativos o usuário tem para pedir apenas esses preços à API
-  const tickersUnicos = useMemo(() => {
-    return Array.from(new Set(ativosFirebase.map((ativo) => ativo.ticker)));
-  }, [ativosFirebase]);
-
-  // 3. REACT QUERY: INTEGRAÇÃO DE API COM CACHE
-  // Só faz a requisição se o usuário tiver ativos (tickersUnicos.length > 0)
-  const { data: cotacoesDeMercado, isLoading: loadingApi, isError } = useQuery({
-    queryKey: ['marketData', tickersUnicos],
-    queryFn: () => buscarCotacoesMercado(tickersUnicos),
-    enabled: tickersUnicos.length > 0, 
-  });
-
-  // 4. ENGINE FINANCEIRA: FUNDINDO FIREBASE + API
-  const { ativosEnriquecidos, resumoCarteira } = useMemo(() => {
-    let totalInvestido = 0;
-    let patrimonioTotal = 0;
-
-    const enriquecidos: AtivoEnriquecido[] = ativosFirebase.map((ativo) => {
-      // Procura a cotação atual na resposta da API
-      const cotacao = cotacoesDeMercado?.find(c => c.ticker === ativo.ticker);
-      
-      const precoAtual = cotacao?.precoAtual || ativo.precoMedio; // Fallback para preço médio se a API falhar
-      const variacaoDia = cotacao?.variacaoDia || 0;
-      const nomeEmpresa = cotacao?.nomeEmpresa || ativo.ticker;
-
-      const valorInvestido = ativo.quantidade * ativo.precoMedio;
-      const saldoAtual = ativo.quantidade * precoAtual;
-      const lucroPrejuizoValor = saldoAtual - valorInvestido;
-      const lucroPrejuizoPercent = valorInvestido > 0 ? (lucroPrejuizoValor / valorInvestido) * 100 : 0;
-
-      // Soma para o resumo geral da carteira
-      totalInvestido += valorInvestido;
-      patrimonioTotal += saldoAtual;
-
+  // 3. CÁLCULO DA CARTEIRA (Simulando o preço atual para a interface funcionar)
+  const ativosCalculados = useMemo(() => {
+    return ativos.map(ativo => {
+      const custoTotal = ativo.quantidade * ativo.precoMedio;
+      // Mock: Simulando que o ativo valorizou 5% (Num app real, viria de uma API de bolsa)
+      const saldoAtual = custoTotal * 1.05; 
       return {
         ...ativo,
-        precoAtual,
         saldoAtual,
-        valorInvestido,
-        lucroPrejuizoValor,
-        lucroPrejuizoPercent,
-        variacaoDia,
-        nomeEmpresa
+        lucroPrejuizoValor: saldoAtual - custoTotal,
+        lucroPrejuizoPercent: 5
       };
     });
+  }, [ativos]);
 
+  const resumoCarteira = useMemo(() => {
+    const totalInvestido = ativos.reduce((acc, a) => acc + (a.quantidade * a.precoMedio), 0);
+    const patrimonioTotal = ativosCalculados.reduce((acc, a) => acc + a.saldoAtual, 0);
     const lucroTotalCarteira = patrimonioTotal - totalInvestido;
     const rentabilidadeTotalPercent = totalInvestido > 0 ? (lucroTotalCarteira / totalInvestido) * 100 : 0;
+    
+    return { totalInvestido, patrimonioTotal, lucroTotalCarteira, rentabilidadeTotalPercent };
+  }, [ativos, ativosCalculados]);
 
-    return {
-      ativosEnriquecidos: enriquecidos,
-      resumoCarteira: {
-        totalInvestido,
-        patrimonioTotal,
-        lucroTotalCarteira,
-        rentabilidadeTotalPercent
-      }
-    };
-  }, [ativosFirebase, cotacoesDeMercado]);
-
-  // 5. FUNÇÕES CRUD
-  const adicionarAtivo = async (novo: NovoAtivo) => {
-    if (!user?.uid) return;
-    await addDoc(collection(db, 'users', user.uid, 'investimentos'), {
-      ...novo,
-      userId: user.uid,
-      createdAt: new Date().toISOString()
-    });
+  // 4. FUNÇÕES DE AÇÃO
+  const adicionarAtivo = async (novo: Omit<Ativo, 'id'>) => {
+    setAtivos(prev => [{ ...novo, id: crypto.randomUUID() }, ...prev]);
   };
 
-  const deletarAtivo = async (id: string) => {
-    if (!user?.uid) return;
-    await deleteDoc(doc(db, 'users', user.uid, 'investimentos', id));
+  const editarAtivo = async (id: string, dadosAtualizados: Partial<Ativo>) => {
+    setAtivos(prev => prev.map(a => a.id === id ? { ...a, ...dadosAtualizados } : a));
   };
 
-  return {
-    ativos: ativosEnriquecidos,
-    resumoCarteira,
-    loading: loadingFirebase || (loadingApi && tickersUnicos.length > 0),
-    isError,
-    adicionarAtivo,
-    deletarAtivo
+  const deletarAtivo = (id: string) => {
+    setAtivos(prev => prev.filter(a => a.id !== id));
+  };
+
+  return { 
+    ativos: ativosCalculados, 
+    resumoCarteira, 
+    loading, 
+    isError: false, 
+    adicionarAtivo, 
+    editarAtivo, 
+    deletarAtivo 
   };
 }

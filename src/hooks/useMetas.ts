@@ -1,71 +1,52 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { MetaFinanceira, NovaMeta } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
+
+export interface MetaFinanceira {
+  id: string;
+  titulo: string;
+  valorAlvo: number;
+  valorAtual: number;
+  dataAlvo: string;
+  icone: string;
+}
 
 export function useMetas() {
-  const { user } = useAuth();
   const [metas, setMetas] = useState<MetaFinanceira[]>([]);
   const [loadingMetas, setLoadingMetas] = useState(true);
 
   useEffect(() => {
-    if (!user?.uid) {
-      setMetas([]);
-      setLoadingMetas(false);
-      return;
-    }
+    const salvos = localStorage.getItem('@FinSight:metas');
+    if (salvos) setMetas(JSON.parse(salvos));
+    setLoadingMetas(false);
+  }, []);
 
-    setLoadingMetas(true);
-    
-    // Busca as metas do usuário
-    const q = query(
-      collection(db, 'users', user.uid, 'metas'),
-      orderBy('createdAt', 'desc')
-    );
+  useEffect(() => {
+    if (!loadingMetas) localStorage.setItem('@FinSight:metas', JSON.stringify(metas));
+  }, [metas, loadingMetas]);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const dados = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as MetaFinanceira[];
+  const adicionarMeta = async (nova: Omit<MetaFinanceira, 'id'>) => {
+    setMetas(prev => [{ ...nova, id: crypto.randomUUID() }, ...prev]);
+  };
 
-      setMetas(dados);
-      setLoadingMetas(false);
-    });
+  const editarMeta = async (id: string, dadosAtualizados: Partial<MetaFinanceira>) => {
+    setMetas(prev => prev.map(m => m.id === id ? { ...m, ...dadosAtualizados } : m));
+  };
 
-    return () => unsubscribe();
-  }, [user?.uid]);
-
-  const adicionarMeta = async (nova: NovaMeta) => {
-    if (!user?.uid) return;
-    
-    await addDoc(collection(db, 'users', user.uid, 'metas'), {
-      ...nova,
-      userId: user.uid,
-      createdAt: new Date().toISOString()
-    });
+  const deletarMeta = (id: string) => {
+    setMetas(prev => prev.filter(m => m.id !== id));
   };
 
   const atualizarProgresso = async (id: string, novoValor: number) => {
-    if (!user?.uid) return;
-    await updateDoc(doc(db, 'users', user.uid, 'metas', id), {
-      valorAtual: novoValor
-    });
-  };
-
-  const deletarMeta = async (id: string) => {
-    if (!user?.uid) return;
-    await deleteDoc(doc(db, 'users', user.uid, 'metas', id));
+    setMetas(prev => prev.map(m => m.id === id ? { ...m, valorAtual: novoValor } : m));
   };
 
   return { 
     metas, 
     loadingMetas, 
     adicionarMeta, 
-    atualizarProgresso,
-    deletarMeta 
+    editarMeta, 
+    deletarMeta, 
+    atualizarProgresso 
   };
 }

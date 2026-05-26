@@ -95,11 +95,19 @@ export function useTransactions() {
     setTransacoes((prev) => prev.filter((t) => t.id !== id));
   };
 
+  // <-- FUNÇÃO DE EDIÇÃO ADICIONADA AQUI
+  const editarTransacao = (id: string, dadosAtualizados: Partial<Transacao>) => {
+    setTransacoes((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...dadosAtualizados } : t))
+    );
+  };
+
   return {
     transacoes: transacoesDoMes,
     loading,
     resumoFinanceiro,
     adicionarTransacao,
-    deletarTransacao
+    deletarTransacao,
+    editarTransacao // <-- EXPORTADA AQUI PARA USO NA TELA
   };
 }

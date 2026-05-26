@@ -2,29 +2,26 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMetas } from '@/hooks/useMetas';
-import { useTransactions } from '@/hooks/useTransactions'; // Importamos as transações!
-import { MetaModal } from '@/components/metas/MetaModal';
-import { MetaFinanceira } from '@/types';
+import { useMetas, MetaFinanceira } from '@/hooks/useMetas';
+import { useTransactions } from '@/hooks/useTransactions'; 
 import { 
-  Plus, Trash2, ShieldAlert, Plane, Home, Car, Target, 
+  Plus, Trash2, Edit2, ShieldAlert, Plane, Home, Car, Target, 
   TrendingUp, CheckCircle2, Wallet, X, AlertCircle
 } from 'lucide-react';
 
 export default function MetasPage() {
-  const { metas, loadingMetas, adicionarMeta, deletarMeta, atualizarProgresso } = useMetas();
-  // Puxamos a "Sobra" calculada lá no Dashboard!
+  const { metas, loadingMetas, adicionarMeta, editarMeta, deletarMeta, atualizarProgresso } = useMetas();
   const { resumoFinanceiro } = useTransactions(); 
   
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Controles dos Modais
+  const [isModalNovaMetaOpen, setIsModalNovaMetaOpen] = useState(false);
+  const [metaEmEdicao, setMetaEmEdicao] = useState<MetaFinanceira | null>(null);
+  const [metaSelecionadaParaFundos, setMetaSelecionadaParaFundos] = useState<MetaFinanceira | null>(null);
   
-  // Estados para o novo Modal de Adicionar Fundos
-  const [metaSelecionada, setMetaSelecionada] = useState<MetaFinanceira | null>(null);
+  // Estado para o formulário de investimento
   const [valorInvestimento, setValorInvestimento] = useState('');
 
-  const formatarMoeda = (valor: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-  };
+  const formatarMoeda = (valor: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 
   const getIcone = (tipo: string) => {
     switch (tipo) {
@@ -41,22 +38,57 @@ export default function MetasPage() {
     const alvo = new Date(dataAlvo);
     const meses = (alvo.getFullYear() - hoje.getFullYear()) * 12 + (alvo.getMonth() - hoje.getMonth());
     const restante = valorAlvo - valorAtual;
-    
     if (meses <= 0 || restante <= 0) return 0;
     return restante / meses;
   };
 
-  // O Saldo Real que o usuário pode distribuir
   const saldoDisponivel = Math.max(0, resumoFinanceiro.sobra);
 
+  // Função ÚNICA para Criar ou Editar Meta
+  const handleSalvarMeta = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    const payload = {
+      titulo: formData.get('titulo') as string,
+      valorAlvo: Number(formData.get('valorAlvo')),
+      dataAlvo: formData.get('dataAlvo') as string,
+      icone: formData.get('icone') as string,
+    };
+
+    if (metaEmEdicao) {
+      await editarMeta(metaEmEdicao.id, payload);
+    } else {
+      await adicionarMeta({ ...payload, valorAtual: 0 }); // Nova meta começa zerada
+    }
+    
+    fecharModalMeta();
+  };
+
+  const abrirModalNovaMeta = () => {
+    setMetaEmEdicao(null);
+    setIsModalNovaMetaOpen(true);
+  };
+
+  const abrirModalEditarMeta = (meta: MetaFinanceira) => {
+    setMetaEmEdicao(meta);
+    setIsModalNovaMetaOpen(true);
+  };
+
+  const fecharModalMeta = () => {
+    setIsModalNovaMetaOpen(false);
+    setMetaEmEdicao(null);
+  };
+
+  // Função para lidar com o investimento em uma meta existente
   const handleSalvarFundos = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!metaSelecionada || !valorInvestimento) return;
+    if (!metaSelecionadaParaFundos || !valorInvestimento) return;
 
     const valor = Number(valorInvestimento);
     if (valor > 0 && valor <= saldoDisponivel) {
-      await atualizarProgresso(metaSelecionada.id, metaSelecionada.valorAtual + valor);
-      setMetaSelecionada(null);
+      await atualizarProgresso(metaSelecionadaParaFundos.id, metaSelecionadaParaFundos.valorAtual + valor);
+      setMetaSelecionadaParaFundos(null);
       setValorInvestimento('');
     }
   };
@@ -68,15 +100,11 @@ export default function MetasPage() {
           <h2 className="text-3xl font-display font-bold tracking-tight">Metas e Caixinhas</h2>
           <p className="text-foreground/50">Dê nome ao seu dinheiro e acompanhe seus objetivos.</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-primary text-primary-foreground px-6 py-3 rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform shadow-md focus-ring"
-        >
+        <button onClick={abrirModalNovaMeta} className="bg-primary text-primary-foreground px-6 py-3 rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform shadow-md focus-ring">
           <Plus size={18} /> Nova Meta
         </button>
       </section>
 
-      {/* Card de Resumo de Saldo (Melhora a UX para ele saber quanto tem) */}
       <div className="glass p-4 rounded-2xl border border-border flex items-center justify-between max-w-md bg-background/50">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-success/10 text-success"><Wallet size={20} /></div>
@@ -95,8 +123,8 @@ export default function MetasPage() {
         <div className="glass rounded-3xl p-16 text-center flex flex-col items-center border-dashed border-2">
           <Target size={48} className="text-foreground/20 mb-4" />
           <h3 className="text-xl font-bold mb-2">Você ainda não tem metas</h3>
-          <p className="text-foreground/50 max-w-md mb-6">O Primo Pobre diz que quem não sabe para onde quer ir, gasta dinheiro no meio do caminho. Crie sua primeira caixinha!</p>
-          <button onClick={() => setIsModalOpen(true)} className="bg-foreground text-background px-6 py-2.5 rounded-full font-bold text-sm">Criar Meta</button>
+          <p className="text-foreground/50 max-w-md mb-6">Crie a sua primeira caixinha e comece a guardar o seu dinheiro com propósito.</p>
+          <button onClick={abrirModalNovaMeta} className="bg-foreground text-background px-6 py-2.5 rounded-full font-bold text-sm">Criar Meta</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -114,7 +142,11 @@ export default function MetasPage() {
                     <div className={`p-3 rounded-2xl ${concluido ? 'bg-success/20 text-success' : 'bg-primary/10 text-primary'}`}>
                       {concluido ? <CheckCircle2 size={24} /> : getIcone(meta.icone)}
                     </div>
-                    <button onClick={() => deletarMeta(meta.id)} className="p-2 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-destructive transition-all"><Trash2 size={16} /></button>
+                    {/* BOTÕES DE AÇÃO: EDITAR E DELETAR */}
+                    <div className="flex gap-2">
+                      <button onClick={() => abrirModalEditarMeta(meta)} className="p-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 text-foreground/40 hover:text-primary transition-all"><Edit2 size={16} /></button>
+                      <button onClick={() => deletarMeta(meta.id)} className="p-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 text-foreground/40 hover:text-destructive transition-all"><Trash2 size={16} /></button>
+                    </div>
                   </div>
 
                   <h3 className="text-lg font-bold mb-1">{meta.titulo}</h3>
@@ -139,11 +171,7 @@ export default function MetasPage() {
                           <TrendingUp size={14} className="text-primary" /> Guarde {formatarMoeda(guardaMensal)}/mês
                         </div>
                       )}
-                      {/* O BOTÃO AGORA CHAMA O NOSSO MODAL E NÃO MAIS O PROMPT */}
-                      <button 
-                        onClick={() => setMetaSelecionada(meta)} 
-                        className="w-full py-2.5 rounded-xl border-2 border-primary text-primary font-bold text-sm hover:bg-primary/5 transition-colors"
-                      >
+                      <button onClick={() => setMetaSelecionadaParaFundos(meta)} className="w-full py-2.5 rounded-xl border border-primary text-primary font-bold text-sm hover:bg-primary/5 transition-colors">
                         Guardar Dinheiro
                       </button>
                     </div>
@@ -159,21 +187,70 @@ export default function MetasPage() {
         </div>
       )}
 
-      {/* MODAL DE ADICIONAR FUNDOS (SUBSTITUTO DO PROMPT) */}
+      {/* MODAL 1: CRIAR OU EDITAR META */}
       <AnimatePresence>
-        {metaSelecionada && (
+        {isModalNovaMetaOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMetaSelecionada(null)} className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={fecharModalMeta} className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm" />
+
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="w-full max-w-md bg-background border border-border rounded-3xl p-6 shadow-2xl relative z-10 glass">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-display text-xl font-bold">{metaEmEdicao ? 'Editar Meta' : 'Criar Nova Meta'}</h3>
+                <button onClick={fecharModalMeta} className="p-2 hover:bg-foreground/5 rounded-full transition-colors text-foreground/50"><X size={18} /></button>
+              </div>
+
+              <form onSubmit={handleSalvarMeta} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-foreground/60 mb-1 block">Nome da Meta</label>
+                  <input name="titulo" defaultValue={metaEmEdicao?.titulo} type="text" required placeholder="Ex: Viagem para Europa" className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm focus-ring outline-none focus:border-primary" />
+                </div>
+                
+                <div>
+                  <label className="text-xs font-bold text-foreground/60 mb-1 block">Qual o valor alvo? (R$)</label>
+                  <input name="valorAlvo" defaultValue={metaEmEdicao?.valorAlvo} type="number" step="0.01" required placeholder="0.00" className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm focus-ring outline-none focus:border-primary" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-foreground/60 mb-1 block">Prazo</label>
+                    <input name="dataAlvo" defaultValue={metaEmEdicao?.dataAlvo} type="date" required className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm focus-ring outline-none focus:border-primary cursor-pointer" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-foreground/60 mb-1 block">Ícone</label>
+                    <select name="icone" defaultValue={metaEmEdicao?.icone || "alvo"} required className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm focus-ring outline-none focus:border-primary cursor-pointer">
+                      <option value="alvo">🎯 Alvo Geral</option>
+                      <option value="viagem">✈️ Viagem</option>
+                      <option value="reserva">🛡️ Reserva de Emergência</option>
+                      <option value="casa">🏠 Casa Própria</option>
+                      <option value="carro">🚗 Carro Novo</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button type="submit" className="w-full mt-2 bg-primary text-primary-foreground font-bold text-sm py-3.5 rounded-xl hover:scale-[1.02] transition-all">
+                  {metaEmEdicao ? 'Salvar Alterações' : 'Salvar Meta'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL 2: ADICIONAR FUNDOS (Investir) */}
+      <AnimatePresence>
+        {metaSelecionadaParaFundos && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMetaSelecionadaParaFundos(null)} className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm" />
 
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="w-full max-w-md bg-background border border-border rounded-3xl p-6 shadow-2xl relative z-10 glass">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="font-display text-xl font-bold">Investir na Meta</h3>
-                <button onClick={() => setMetaSelecionada(null)} className="p-2 hover:bg-foreground/5 rounded-full transition-colors text-foreground/50"><X size={18} /></button>
+                <button onClick={() => setMetaSelecionadaParaFundos(null)} className="p-2 hover:bg-foreground/5 rounded-full transition-colors text-foreground/50"><X size={18} /></button>
               </div>
 
               <div className="mb-6">
                 <p className="text-sm text-foreground/60 mb-1">Destino</p>
-                <p className="font-bold text-lg">{metaSelecionada.titulo}</p>
+                <p className="font-bold text-lg">{metaSelecionadaParaFundos.titulo}</p>
               </div>
 
               <form onSubmit={handleSalvarFundos} className="space-y-5">
@@ -184,33 +261,13 @@ export default function MetasPage() {
 
                 <div>
                   <label className="text-xs font-bold text-foreground/60 mb-2 block">Quanto você quer guardar hoje?</label>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    max={saldoDisponivel} // O HTML já bloqueia o usuário de digitar mais do que ele tem
-                    value={valorInvestimento}
-                    onChange={(e) => setValorInvestimento(e.target.value)}
-                    placeholder="R$ 0,00" 
-                    className="w-full bg-background border border-border rounded-xl px-4 py-4 text-2xl font-display font-bold focus-ring" 
-                    autoFocus
-                  />
+                  <input type="number" step="0.01" max={saldoDisponivel} value={valorInvestimento} onChange={(e) => setValorInvestimento(e.target.value)} placeholder="R$ 0,00" className="w-full bg-background border border-border rounded-xl px-4 py-4 text-2xl font-display font-bold focus-ring outline-none focus:border-primary" autoFocus />
                   {Number(valorInvestimento) > saldoDisponivel && (
-                    <p className="text-xs text-destructive mt-2 flex items-center gap-1">
-                      <AlertCircle size={14} /> Você não tem saldo suficiente (Sobra) para este valor.
-                    </p>
-                  )}
-                  {saldoDisponivel === 0 && (
-                    <p className="text-xs text-warning mt-2 flex items-center gap-1">
-                      <AlertCircle size={14} /> Registre novas Entradas no seu painel para ter saldo.
-                    </p>
+                    <p className="text-xs text-destructive mt-2 flex items-center gap-1"><AlertCircle size={14} /> Saldo insuficiente.</p>
                   )}
                 </div>
 
-                <button 
-                  type="submit" 
-                  disabled={!valorInvestimento || Number(valorInvestimento) <= 0 || Number(valorInvestimento) > saldoDisponivel} 
-                  className="w-full bg-primary text-primary-foreground font-bold text-sm py-4 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100"
-                >
+                <button type="submit" disabled={!valorInvestimento || Number(valorInvestimento) <= 0 || Number(valorInvestimento) > saldoDisponivel} className="w-full bg-primary text-primary-foreground font-bold text-sm py-4 rounded-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100">
                   Confirmar Investimento
                 </button>
               </form>
@@ -219,7 +276,6 @@ export default function MetasPage() {
         )}
       </AnimatePresence>
 
-      <MetaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={async (data) => await adicionarMeta(data)} />
     </div>
   );
 }

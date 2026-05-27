@@ -3,13 +3,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTransactions } from '@/hooks/useTransactions';
-import { useCartoes } from '@/hooks/useCartoes'; // Para listar os cartões no select
+import { useCartoes } from '@/hooks/useCartoes';
 import { MonthCarousel } from '@/components/layout/MonthCarousel';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useSettings } from '@/contexts/SettingsContext';
 import { 
   ArrowUpRight, ArrowDownRight, Wallet, Plus, 
-  Trash2, Edit2, ShieldAlert, Target, Sparkles, TrendingUp, Activity, LayoutGrid, X
+  Trash2, Edit2, ShieldAlert, Target, LayoutGrid, X
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -24,16 +23,6 @@ export default function Dashboard() {
 
   const formatarMoeda = (valor: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
   const percentualEssencial = resumoFinanceiro.entradas > 0 ? Math.round((resumoFinanceiro.essenciais / resumoFinanceiro.entradas) * 100) : 0;
-  
-  let corComprometimento = 'bg-success';
-  if (percentualEssencial > 50) corComprometimento = 'bg-warning';
-  if (percentualEssencial > 70) corComprometimento = 'bg-destructive';
-
-  const dadosGrafico = [
-    { name: traduzir('essencial'), value: resumoFinanceiro.essenciais, color: 'hsl(var(--primary))' },
-    { name: traduzir('naoEssencial'), value: resumoFinanceiro.naoEssenciais, color: 'hsl(var(--warning))' },
-    { name: 'Sobra', value: Math.max(0, resumoFinanceiro.sobra), color: 'hsl(var(--success))' }
-  ].filter(item => item.value > 0);
 
   const abrirModalNova = () => { setTransacaoEmEdicao(null); setIsModalOpen(true); };
   const abrirModalEditar = (t: any) => { setTransacaoEmEdicao(t); setIsModalOpen(true); };
@@ -60,7 +49,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto">
-      
       <section className="flex flex-col gap-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -75,7 +63,6 @@ export default function Dashboard() {
       </section>
 
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* CARDS RESUMO (Mesmo código de antes, focado na funcionalidade) */}
         <div className="glass p-5 rounded-3xl border border-border flex flex-col justify-between h-36">
           <div className="flex justify-between items-start">
             <div className="p-2.5 rounded-xl bg-success/10 text-success"><ArrowUpRight size={20} /></div>
@@ -106,7 +93,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* BLOCO 3: Histórico de Transações */}
       <section className="glass rounded-3xl p-6 border border-border">
         <div className="flex items-center gap-2 mb-6 text-foreground">
           <LayoutGrid size={18} className="text-foreground/70" />
@@ -147,68 +133,66 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* MODAL EMBUTIDO: CRIAR/EDITAR COMPRA */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="w-full max-w-md bg-background border border-border rounded-3xl p-6 shadow-2xl relative z-10 glass">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="font-display text-xl font-bold">{transacaoEmEdicao ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
+                <h3 className="font-display text-xl font-bold">{transacaoEmEdicao ? traduzir('editarLancamento') : traduzir('btnAddCompra')}</h3>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-foreground/5 rounded-full"><X size={18} /></button>
               </div>
 
               <form onSubmit={handleSalvarTransacao} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-foreground/60 block mb-1">Título</label>
+                  <label className="text-xs font-bold text-foreground/60 block mb-1">{traduzir('Título')}</label>
                   <input name="titulo" defaultValue={transacaoEmEdicao?.titulo} required placeholder="Ex: Supermercado" className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-bold text-foreground/60 block mb-1">Valor (R$)</label>
+                    <label className="text-xs font-bold text-foreground/60 block mb-1">{traduzir('Valor (R$)')}</label>
                     <input name="valor" defaultValue={transacaoEmEdicao?.valor} type="number" step="0.01" required placeholder="0.00" className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary" />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-foreground/60 block mb-1">Data</label>
+                    <label className="text-xs font-bold text-foreground/60 block mb-1">{traduzir('Data')}</label>
                     <input name="data" defaultValue={transacaoEmEdicao?.data} type="date" required className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary cursor-pointer" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-bold text-foreground/60 block mb-1">Tipo</label>
+                    <label className="text-xs font-bold text-foreground/60 block mb-1">{traduzir('Tipo')}</label>
                     <select name="tipo" defaultValue={transacaoEmEdicao?.tipo || "Saida"} className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary">
                       <option value="Saida">Saída (Despesa)</option>
                       <option value="Entrada">Entrada (Receita)</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-foreground/60 block mb-1">Categoria</label>
+                    <label className="text-xs font-bold text-foreground/60 block mb-1">{traduzir('Categoria')}</label>
                     <select name="categoria" defaultValue={transacaoEmEdicao?.categoria || "Essencial"} className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary">
-                      <option value="Essencial">Essencial</option>
-                      <option value="Não Essencial">Não Essencial</option>
+                      <option value="Essencial">{traduzir('essencial')}</option>
+                      <option value="Não Essencial">{traduzir('naoEssencial')}</option>
                       <option value="Renda">Renda Fixa/Salário</option>
                     </select>
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-foreground/60 block mb-1">Pagamento</label>
+                  <label className="text-xs font-bold text-foreground/60 block mb-1">{traduzir('Pagamento')}</label>
                   <select name="metodoPagamento" defaultValue={transacaoEmEdicao?.metodoPagamento || "Pix/Dinheiro"} className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary">
                     <option value="Pix/Dinheiro">Pix / Dinheiro</option>
                     <option value="CartaoCredito">Cartão de Crédito</option>
                   </select>
                 </div>
                 
-                {/* Mostra selecionar cartão apenas se for Crédito. Simplificado no modal nativo. */}
                 <div>
-                  <label className="text-xs font-bold text-foreground/60 block mb-1">Cartão (Se for no crédito)</label>
+                  <label className="text-xs font-bold text-foreground/60 block mb-1">{traduzir('Cartão (Se crédito)')}</label>
                   <select name="cartaoId" defaultValue={transacaoEmEdicao?.cartaoId || ""} className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary">
-                    <option value="">Selecione o cartão...</option>
+                    <option value="">Selecione...</option>
                     {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
                 </div>
 
                 <button type="submit" className="w-full mt-2 bg-primary text-primary-foreground font-bold text-sm py-3.5 rounded-xl hover:scale-[1.02] transition-all">
-                  {transacaoEmEdicao ? 'Salvar Alterações' : 'Salvar Lançamento'}
+                  {transacaoEmEdicao ? traduzir('editarLancamento') : traduzir('salvarLancamento')}
                 </button>
               </form>
             </motion.div>

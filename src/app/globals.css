@@ -80,3 +80,17 @@
 }
 
 .dark .glass { background-color: rgba(0, 0, 0, 0.4); }
+
+/* MODO DE ALTO CONTRASTE (MODO LEITURA) */
+.alto-contraste {
+  --foreground: 0 0% 0%; /* Textos totalmente pretos para leitura fácil */
+  --background: 0 0% 100%; /* Fundo 100% branco */
+  --border: 0 0% 0%; /* Bordas pretas sólidas */
+  font-size: 105%; /* Aumenta a letra de tudo em 5% */
+}
+
+.dark.alto-contraste {
+  --foreground: 0 0% 100%; /* Textos 100% brancos no dark mode */
+  --background: 0 0% 0%; /* Fundo 100% preto */
+  --border: 0 0% 100%; /* Bordas brancas */
+}

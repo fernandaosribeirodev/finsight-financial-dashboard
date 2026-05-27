@@ -1,87 +1,17 @@
-// src/app/app/educacao/page.tsx
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSettings } from '@/contexts/SettingsContext';
 import { 
   GraduationCap, PlayCircle, BookOpen, Trophy, 
   ShieldCheck, ArrowRight, Bot, X, Send, Calculator,
   Lightbulb, ShoppingBag, Briefcase, Utensils, Laptop
 } from 'lucide-react';
 
-const IDEIAS_RENDA_EXTRA = [
-  {
-    id: 1,
-    titulo: 'Desapego Inteligente',
-    descricao: 'Roupas, eletrônicos ou móveis parados em casa podem virar dinheiro rápido na OLX, Enjoei ou Mercado Livre.',
-    icone: ShoppingBag,
-    cor: 'text-blue-500',
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/30'
-  },
-  {
-    id: 2,
-    titulo: 'Prestação de Serviços',
-    descricao: 'Use o que você já sabe fazer: edição de vídeo, aulas particulares, "marido de aluguel" ou passeador de cães.',
-    icone: Briefcase,
-    cor: 'text-orange-500',
-    bg: 'bg-orange-500/10',
-    border: 'border-orange-500/30'
-  },
-  {
-    id: 3,
-    titulo: 'Culinária e Doces',
-    descricao: 'Fazer bolo de pote, brigadeiros gourmet ou marmitas fitness tem alta demanda, giro rápido e baixo custo inicial.',
-    icone: Utensils,
-    cor: 'text-rose-500',
-    bg: 'bg-rose-500/10',
-    border: 'border-rose-500/30'
-  },
-  {
-    id: 4,
-    titulo: 'Mercado de Afiliados',
-    descricao: 'Venda produtos digitais de outras pessoas (cursos, e-books) e ganhe comissões por cada venda na internet.',
-    icone: Laptop,
-    cor: 'text-emerald-500',
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/30'
-  }
-];
-
-const ARTIGOS_RECOMENDADOS = [
-  { 
-    titulo: 'Como funcionam os Juros Compostos na prática', 
-    tempo: '6 min de leitura', 
-    categoria: 'Conceito',
-    url: 'https://www.mobills.com.br/blog/investimentos/juros-compostos/'
-  },
-  { 
-    titulo: 'O que é a Taxa Selic e como ela afeta investimentos?', 
-    tempo: '8 min de leitura', 
-    categoria: 'Economia',
-    url: 'https://www.tesourodireto.com.br/blog/o-que-e-taxa-selic.htm'
-  },
-  { 
-    titulo: 'Como montar uma Reserva de Emergência', 
-    tempo: '7 min de leitura', 
-    categoria: 'Planejamento',
-    url: 'https://www.xpi.com.br/aprenda-a-investir/relatorios/reserva-de-emergencia/'
-  },
-  { 
-    titulo: 'Tesouro Direto para iniciantes', 
-    tempo: '10 min de leitura', 
-    categoria: 'Investimentos',
-    url: 'https://www.b3.com.br/pt_br/produtos-e-servicos/negociacao/renda-fixa/tesouro-direto/'
-  },
-  { 
-    titulo: 'O que são FIIs e como investir', 
-    tempo: '9 min de leitura', 
-    categoria: 'Renda Variável',
-    url: 'https://www.suno.com.br/artigos/fundos-imobiliarios/'
-  },
-];
-
 export default function EducacaoPage() {
+  const { traduzir, isMounted } = useSettings();
+
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
   const [simValorInicial, setSimValorInicial] = useState('1000');
   const [simAporteMensal, setSimAporteMensal] = useState('500');
@@ -92,16 +22,98 @@ export default function EducacaoPage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [historicoChat, setHistoricoChat] = useState<{role: 'user' | 'assistant', content: string}[]>([
-    { role: 'assistant', content: 'Olá! Sou seu Assistente FinSight 💡 Como posso te ajudar com seus estudos financeiros hoje?' }
-  ]);
+  
+  // Histórico agora inicia vazio para não dar erro no carregamento
+  const [historicoChat, setHistoricoChat] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const chatFimRef = useRef<HTMLDivElement>(null);
+
+  // Assim que montar, carrega a primeira mensagem traduzida!
+  useEffect(() => {
+    if (historicoChat.length === 0) {
+      setHistoricoChat([{ role: 'assistant', content: traduzir('olaIa') }]);
+    }
+  }, [traduzir, historicoChat.length]);
 
   useEffect(() => {
     if (isChatOpen) {
       chatFimRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [historicoChat, isChatOpen, isTyping]);
+
+  if (!isMounted) return null;
+
+  // AGORA AS LISTAS FICAM AQUI DENTRO PARA PODEREM SER TRADUZIDAS NA HORA!
+  const IDEIAS_RENDA_EXTRA = [
+    {
+      id: 1,
+      titulo: traduzir('desapego'),
+      descricao: traduzir('desapegoDesc'),
+      icone: ShoppingBag,
+      cor: 'text-blue-500',
+      bg: 'bg-blue-500/10',
+      border: 'border-blue-500/30'
+    },
+    {
+      id: 2,
+      titulo: traduzir('prestacao'),
+      descricao: traduzir('prestacaoDesc'),
+      icone: Briefcase,
+      cor: 'text-orange-500',
+      bg: 'bg-orange-500/10',
+      border: 'border-orange-500/30'
+    },
+    {
+      id: 3,
+      titulo: traduzir('culinaria'),
+      descricao: traduzir('culinariaDesc'),
+      icone: Utensils,
+      cor: 'text-rose-500',
+      bg: 'bg-rose-500/10',
+      border: 'border-rose-500/30'
+    },
+    {
+      id: 4,
+      titulo: traduzir('afiliados'),
+      descricao: traduzir('afiliadosDesc'),
+      icone: Laptop,
+      cor: 'text-emerald-500',
+      bg: 'bg-emerald-500/10',
+      border: 'border-emerald-500/30'
+    }
+  ];
+
+  const ARTIGOS_RECOMENDADOS = [
+    { 
+      titulo: traduzir('jurosCompPratica'), 
+      tempo: traduzir('tempoLeitura6'), 
+      categoria: traduzir('catConceito'),
+      url: 'https://www.mobills.com.br/blog/investimentos/juros-compostos/'
+    },
+    { 
+      titulo: traduzir('selic'), 
+      tempo: traduzir('tempoLeitura8'), 
+      categoria: traduzir('catEconomia'),
+      url: 'https://www.tesourodireto.com.br/blog/o-que-e-taxa-selic.htm'
+    },
+    { 
+      titulo: traduzir('reservaGuia'), 
+      tempo: traduzir('tempoLeitura7'), 
+      categoria: traduzir('catPlan'),
+      url: 'https://www.xpi.com.br/aprenda-a-investir/relatorios/reserva-de-emergencia/'
+    },
+    { 
+      titulo: traduzir('tesouroIniciantes'), 
+      tempo: traduzir('tempoLeitura10'), 
+      categoria: traduzir('catInv'),
+      url: 'https://www.b3.com.br/pt_br/produtos-e-servicos/negociacao/renda-fixa/tesouro-direto/'
+    },
+    { 
+      titulo: traduzir('oqSaoFiis'), 
+      tempo: traduzir('tempoLeitura9'), 
+      categoria: traduzir('catRendaV'),
+      url: 'https://www.suno.com.br/artigos/fundos-imobiliarios/'
+    },
+  ];
 
   const formatarMoeda = (valor: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
@@ -151,7 +163,7 @@ export default function EducacaoPage() {
         setHistoricoChat(prev => [...prev, { role: 'assistant', content: data.insight }]);
       }
     } catch (error) {
-      setHistoricoChat(prev => [...prev, { role: 'assistant', content: 'Desculpe, minha conexão falhou. Pode tentar de novo?' }]);
+      setHistoricoChat(prev => [...prev, { role: 'assistant', content: traduzir('erroIa') }]);
     } finally {
       setIsTyping(false);
     }
@@ -174,15 +186,15 @@ export default function EducacaoPage() {
       <section className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-display font-bold tracking-tight flex items-center gap-3">
-            Educação Financeira <GraduationCap className="text-primary" size={28} />
+            {traduzir('eduFin')} <GraduationCap className="text-primary" size={28} />
           </h2>
-          <p className="text-foreground/50 mt-1">Sua jornada para a independência financeira começa aqui.</p>
+          <p className="text-foreground/50 mt-1">{traduzir('eduFinDesc')}</p>
         </div>
         <div className="flex items-center gap-3 bg-foreground/5 px-4 py-2 rounded-2xl border border-border/50">
           <Trophy size={20} className="text-yellow-500" />
           <div>
-            <p className="text-xs font-bold text-foreground/50 uppercase tracking-wider">Seu Nível</p>
-            <p className="text-sm font-bold">Investidor Iniciante</p>
+            <p className="text-xs font-bold text-foreground/50 uppercase tracking-wider">{traduzir('seuNivel')}</p>
+            <p className="text-sm font-bold">{traduzir('invIniciante')}</p>
           </div>
         </div>
       </section>
@@ -190,10 +202,10 @@ export default function EducacaoPage() {
       <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-r from-primary/10 via-background to-background p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm">
         <div className="relative z-10 max-w-2xl space-y-4">
           <h3 className="text-3xl md:text-4xl font-display font-bold leading-tight uppercase text-foreground">
-            Como fazer sua <span className="text-primary">Reserva de Emergência</span> do jeito certo
+            {traduzir('aulaTitulo1')} <span className="text-primary">{traduzir('aulaTitulo2')}</span> {traduzir('aulaTitulo3')}
           </h3>
           <p className="text-foreground/80 text-lg font-medium">
-            Aprenda com o Primo Pobre, com uma linguagem super didática a como fazer uma reserva de emergência e proteger o que mais importa para você.
+            {traduzir('aulaDesc')}
           </p>
           <div className="flex flex-wrap gap-4 pt-2">
             <a 
@@ -201,14 +213,14 @@ export default function EducacaoPage() {
               target="_blank" rel="noreferrer"
               className="px-6 py-3 bg-primary text-white font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-transform shadow-md"
             >
-              <PlayCircle size={20} /> Assistir Aula Completa
+              <PlayCircle size={20} /> {traduzir('assistirAula')}
             </a>
             <a 
               href="https://www.xpi.com.br/aprenda-a-investir/relatorios/reserva-de-emergencia/" 
               target="_blank" rel="noreferrer"
               className="px-6 py-3 bg-foreground/5 text-foreground font-bold rounded-xl flex items-center gap-2 hover:bg-foreground/10 transition-colors border border-border/50 shadow-sm"
             >
-              <BookOpen size={20} /> Ler Guia Escrito
+              <BookOpen size={20} /> {traduzir('lerGuia')}
             </a>
           </div>
         </div>
@@ -222,7 +234,7 @@ export default function EducacaoPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-display font-bold flex items-center gap-2">
-            <Lightbulb size={20} className="text-yellow-500" /> Ideias de Renda Extra
+            <Lightbulb size={20} className="text-yellow-500" /> {traduzir('ideiasRenda')}
           </h3>
         </div>
 
@@ -248,7 +260,7 @@ export default function EducacaoPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section className="glass p-6 rounded-3xl border border-border">
           <h3 className="font-display font-bold text-lg mb-6 flex items-center gap-2">
-            <BookOpen size={18} className="text-foreground/70" /> Leituras Essenciais
+            <BookOpen size={18} className="text-foreground/70" /> {traduzir('leituras')}
           </h3>
           <div className="space-y-4">
             {ARTIGOS_RECOMENDADOS.map((artigo, idx) => (
@@ -273,15 +285,15 @@ export default function EducacaoPage() {
           <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
             <Calculator size={32} />
           </div>
-          <h3 className="font-display font-bold text-xl mb-2">Simulador de Juros Compostos</h3>
+          <h3 className="font-display font-bold text-xl mb-2">{traduzir('simulador')}</h3>
           <p className="text-sm text-foreground/60 mb-6 max-w-sm">
-            Descubra em quanto tempo você atingirá a sua independência financeira investindo um pouco todos os meses.
+            {traduzir('simDesc')}
           </p>
           <button 
             onClick={() => setIsSimulatorOpen(true)}
             className="px-6 py-3 bg-foreground text-background dark:bg-white dark:text-black font-bold rounded-xl text-sm hover:scale-105 transition-transform w-full md:w-auto shadow-md"
           >
-            Abrir Calculadora
+            {traduzir('abrirCalc')}
           </button>
         </section>
       </div>
@@ -298,34 +310,34 @@ export default function EducacaoPage() {
                 <X size={20} />
               </button>
               <div className="mb-6">
-                <h3 className="text-2xl font-bold flex items-center gap-2"><Calculator className="text-primary" /> Simulador</h3>
+                <h3 className="text-2xl font-bold flex items-center gap-2"><Calculator className="text-primary" /> {traduzir('simTitle')}</h3>
               </div>
 
               <form onSubmit={calcularJuros} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-bold text-foreground/60">Valor Inicial (R$)</label>
+                    <label className="text-xs font-bold text-foreground/60">{traduzir('valorInicial')}</label>
                     <input type="number" value={simValorInicial} onChange={e => setSimValorInicial(e.target.value)} required className="w-full mt-1 p-3 rounded-xl bg-foreground/5 border border-border outline-none focus:border-primary font-bold" />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-foreground/60">Aporte Mensal (R$)</label>
+                    <label className="text-xs font-bold text-foreground/60">{traduzir('aporteMensal')}</label>
                     <input type="number" value={simAporteMensal} onChange={e => setSimAporteMensal(e.target.value)} required className="w-full mt-1 p-3 rounded-xl bg-foreground/5 border border-border outline-none focus:border-primary font-bold" />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-foreground/60">Taxa Anual (%)</label>
+                    <label className="text-xs font-bold text-foreground/60">{traduzir('taxaAnual')}</label>
                     <input type="number" step="0.1" value={simTaxaAnual} onChange={e => setSimTaxaAnual(e.target.value)} required className="w-full mt-1 p-3 rounded-xl bg-foreground/5 border border-border outline-none focus:border-primary font-bold" />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-foreground/60">Tempo (Anos)</label>
+                    <label className="text-xs font-bold text-foreground/60">{traduzir('tempoAnos')}</label>
                     <input type="number" value={simAnos} onChange={e => setSimAnos(e.target.value)} required className="w-full mt-1 p-3 rounded-xl bg-foreground/5 border border-border outline-none focus:border-primary font-bold" />
                   </div>
                 </div>
-                <button type="submit" className="w-full py-4 font-bold bg-primary text-primary-foreground rounded-xl shadow-lg hover:opacity-90">Calcular Resultado</button>
+                <button type="submit" className="w-full py-4 font-bold bg-primary text-primary-foreground rounded-xl shadow-lg hover:opacity-90">{traduzir('calcularResultado')}</button>
               </form>
 
               {simResultado !== null && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 p-6 bg-success/10 border border-success/20 rounded-2xl text-center">
-                  <p className="text-xs font-bold text-success uppercase tracking-widest mb-1">Valor Total Acumulado</p>
+                  <p className="text-xs font-bold text-success uppercase tracking-widest mb-1">{traduzir('valorAcumulado')}</p>
                   <p className="text-3xl font-display font-bold text-success">{formatarMoeda(simResultado)}</p>
                 </motion.div>
               )}
@@ -346,9 +358,9 @@ export default function EducacaoPage() {
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-white/10 rounded-xl"><Bot size={20} /></div>
                   <div>
-                    <h4 className="font-bold text-sm">Assistente IA</h4>
+                    <h4 className="font-bold text-sm">{traduzir('assistenteIA')}</h4>
                     <div className="flex items-center gap-1.5 text-[10px] text-white/70">
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /> IA Online
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /> {traduzir('iaOnline')}
                     </div>
                   </div>
                 </div>
@@ -378,7 +390,7 @@ export default function EducacaoPage() {
               </div>
 
               <form onSubmit={enviarMensagemIA} className="p-3 bg-background border-t border-border flex items-center gap-2">
-                <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} disabled={isTyping} placeholder="Pergunte algo..." className="flex-1 p-3 rounded-xl bg-foreground/5 border border-border outline-none focus:border-primary text-sm disabled:opacity-50" />
+                <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} disabled={isTyping} placeholder={traduzir('pergunteAlgo')} className="flex-1 p-3 rounded-xl bg-foreground/5 border border-border outline-none focus:border-primary text-sm disabled:opacity-50" />
                 <button type="submit" disabled={isTyping || !chatInput.trim()} className="p-3 bg-[#8b9b92] text-white hover:bg-[#6e7c74] rounded-xl shadow-md"><Send size={18} /></button>
               </form>
             </motion.div>

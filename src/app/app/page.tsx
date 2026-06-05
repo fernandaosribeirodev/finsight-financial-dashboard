@@ -48,14 +48,17 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6 pb-16 max-w-7xl mx-auto">
+
+    <div className="space-y-6 pb-16 pt-6 md:pt-8 max-w-7xl mx-auto px-4 md:px-8">
+      
       <section className="flex flex-col gap-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-3xl font-display font-bold tracking-tight">{traduzir('visGeral')}</h2>
             <p className="text-foreground/50">{traduzir('dashSub')}</p>
           </div>
-          <button onClick={abrirModalNova} className="bg-foreground text-background px-6 py-3 rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform shadow-md focus-ring">
+          {/* CORREÇÃO 2: w-full no celular e md:w-auto no PC */}
+          <button onClick={abrirModalNova} className="w-full md:w-auto bg-foreground text-background px-6 py-3 rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform shadow-md focus-ring">
             <Plus size={18} /> {traduzir('btnAddCompra')}
           </button>
         </div>
@@ -93,7 +96,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section className="glass rounded-3xl p-6 border border-border">
+      <section className="glass rounded-3xl p-4 md:p-6 border border-border overflow-hidden">
         <div className="flex items-center gap-2 mb-6 text-foreground">
           <LayoutGrid size={18} className="text-foreground/70" />
           <h3 className="font-display text-lg font-bold">{traduzir('movimentos')}</h3>
@@ -110,16 +113,17 @@ export default function Dashboard() {
           ) : (
             <AnimatePresence mode="popLayout">
               {transacoes.map((t) => (
-                <motion.div key={t.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="border border-border/40 hover:border-border rounded-2xl bg-background/50 p-3 px-5 flex items-center justify-between group transition-colors">
-                  <div className="flex items-center gap-4 min-w-0">
+                <motion.div key={t.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="border border-border/40 hover:border-border rounded-2xl bg-background/50 p-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 group transition-colors">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className={`p-2 rounded-xl shrink-0 ${t.tipo === 'Entrada' ? 'bg-success/10 text-success' : t.categoria === 'Essencial' ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning'}`}>
                       {t.tipo === 'Entrada' ? <ArrowUpRight size={16}/> : t.categoria === 'Essencial' ? <ShieldAlert size={16}/> : <ArrowDownRight size={16}/>}
                     </div>
-                    <div className="min-w-0 flex flex-col md:flex-row md:items-center md:gap-4">
-                      <h4 className="text-sm font-bold truncate text-foreground/90 w-48">{t.titulo}</h4>
+                    {/* CORREÇÃO 3: Removido w-48 fixo para evitar quebra. Usando flex-1 e truncate */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-bold truncate text-foreground/90">{t.titulo}</h4>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 ml-auto">
                     <span className={`text-sm font-display font-bold tabular-nums mr-2 ${t.tipo === 'Entrada' ? 'text-success' : 'text-foreground'}`}>
                       {t.tipo === 'Saida' ? '-' : ''}{formatarMoeda(t.valor)}
                     </span>
@@ -137,7 +141,7 @@ export default function Dashboard() {
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="w-full max-w-md bg-background border border-border rounded-3xl p-6 shadow-2xl relative z-10 glass">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="w-full max-w-md bg-background border border-border rounded-3xl p-6 shadow-2xl relative z-10 glass max-h-[90vh] overflow-y-auto custom-scrollbar">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="font-display text-xl font-bold">{transacaoEmEdicao ? traduzir('editarLancamento') : traduzir('btnAddCompra')}</h3>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-foreground/5 rounded-full"><X size={18} /></button>
@@ -148,7 +152,8 @@ export default function Dashboard() {
                   <label className="text-xs font-bold text-foreground/60 block mb-1">{traduzir('Título')}</label>
                   <input name="titulo" defaultValue={transacaoEmEdicao?.titulo} required placeholder="Ex: Supermercado" className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                {/* CORREÇÃO 4: grid-cols-1 no celular, sm:grid-cols-2 no PC para não esmagar os inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-foreground/60 block mb-1">{traduzir('Valor (R$)')}</label>
                     <input name="valor" defaultValue={transacaoEmEdicao?.valor} type="number" step="0.01" required placeholder="0.00" className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary" />
@@ -158,7 +163,7 @@ export default function Dashboard() {
                     <input name="data" defaultValue={transacaoEmEdicao?.data} type="date" required className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary cursor-pointer" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-foreground/60 block mb-1">{traduzir('Tipo')}</label>
                     <select name="tipo" defaultValue={transacaoEmEdicao?.tipo || "Saida"} className="w-full bg-foreground/5 border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary">
